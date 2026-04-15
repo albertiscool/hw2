@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Q-learning vs SARSA — Cliff Walking 強化學習比較</title>
+    <meta name="description" content="互動式 Q-learning 與 SARSA 演算法比較：Cliff Walking 環境中的強化學習實驗">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Hero Header -->
+    <header id="hero-header">
+        <div class="header-glow"></div>
+        <div class="header-content">
+            <h1>
+                <span class="gradient-text">Q-learning</span>
+                <span class="vs-badge">VS</span>
+                <span class="gradient-text-alt">SARSA</span>
+            </h1>
+            <p class="subtitle">Cliff Walking 環境下的強化學習演算法比較實驗</p>
+            <div class="header-tags">
+                <span class="tag">Off-policy</span>
+                <span class="tag">On-policy</span>
+                <span class="tag">ε-greedy</span>
+                <span class="tag">Temporal Difference</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Control Panel -->
+        <section id="control-panel" class="glass-card">
+            <h2 class="section-title"><span class="icon">⚙️</span> 參數設定</h2>
+            <div class="controls-grid">
+                <div class="control-group">
+                    <label for="epsilon">探索率 ε</label>
+                    <div class="input-wrapper">
+                        <input type="range" id="epsilon" min="0.01" max="0.5" step="0.01" value="0.1">
+                        <span class="value-display" id="epsilon-val">0.1</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label for="alpha">學習率 α</label>
+                    <div class="input-wrapper">
+                        <input type="range" id="alpha" min="0.01" max="1.0" step="0.01" value="0.1">
+                        <span class="value-display" id="alpha-val">0.1</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label for="gamma">折扣因子 γ</label>
+                    <div class="input-wrapper">
+                        <input type="range" id="gamma" min="0.1" max="1.0" step="0.01" value="0.9">
+                        <span class="value-display" id="gamma-val">0.9</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label for="episodes">訓練回合數</label>
+                    <div class="input-wrapper">
+                        <input type="range" id="episodes" min="100" max="2000" step="50" value="500">
+                        <span class="value-display" id="episodes-val">500</span>
+                    </div>
+                </div>
+            </div>
+            <div class="button-group">
+                <button id="btn-train" class="btn btn-primary" onclick="startTraining()">
+                    <span class="btn-icon">▶</span> 開始訓練
+                </button>
+                <button id="btn-reset" class="btn btn-secondary" onclick="resetAll()">
+                    <span class="btn-icon">↺</span> 重置
+                </button>
+                <button id="btn-animate" class="btn btn-accent" onclick="animatePaths()" disabled>
+                    <span class="btn-icon">🎬</span> 播放路徑動畫
+                </button>
+            </div>
+            <div id="progress-container" class="hidden">
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+                <span id="progress-text" class="progress-text">訓練中...</span>
+            </div>
+        </section>
+
+        <!-- Grid World Section -->
+        <section id="gridworld-section">
+            <div class="grid-pair">
+                <div class="grid-container glass-card">
+                    <h3><span class="dot dot-qlearning"></span> Q-learning 策略</h3>
+                    <div id="grid-qlearning" class="grid"></div>
+                    <div class="grid-legend">
+                        <span class="legend-item"><span class="legend-color" style="background: var(--start-color)"></span>起點 S</span>
+                        <span class="legend-item"><span class="legend-color" style="background: var(--goal-color)"></span>終點 G</span>
+                        <span class="legend-item"><span class="legend-color" style="background: var(--cliff-color)"></span>懸崖</span>
+                        <span class="legend-item"><span class="legend-color" style="background: var(--path-q-color)"></span>路徑</span>
+                    </div>
+                </div>
+                <div class="grid-container glass-card">
+                    <h3><span class="dot dot-sarsa"></span> SARSA 策略</h3>
+                    <div id="grid-sarsa" class="grid"></div>
+                    <div class="grid-legend">
+                        <span class="legend-item"><span class="legend-color" style="background: var(--start-color)"></span>起點 S</span>
+                        <span class="legend-item"><span class="legend-color" style="background: var(--goal-color)"></span>終點 G</span>
+                        <span class="legend-item"><span class="legend-color" style="background: var(--cliff-color)"></span>懸崖</span>
+                        <span class="legend-item"><span class="legend-color" style="background: var(--path-s-color)"></span>路徑</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts Section -->
+        <section id="charts-section">
+            <div class="chart-container glass-card">
+                <h3><span class="icon">📈</span> 每回合累積獎勵</h3>
+                <canvas id="reward-chart"></canvas>
+            </div>
+            <div class="chart-container glass-card">
+                <h3><span class="icon">📊</span> 滑動平均獎勵（窗口=20）</h3>
+                <canvas id="smooth-reward-chart"></canvas>
+            </div>
+        </section>
+
+        <!-- Statistics Section -->
+        <section id="stats-section">
+            <h2 class="section-title"><span class="icon">📋</span> 訓練統計</h2>
+            <div class="stats-grid">
+                <div class="stat-card glass-card stat-q">
+                    <h4>Q-learning</h4>
+                    <div class="stat-row"><span>最終平均獎勵</span><span id="stat-q-avg">—</span></div>
+                    <div class="stat-row"><span>最佳回合獎勵</span><span id="stat-q-best">—</span></div>
+                    <div class="stat-row"><span>收斂回合 (≥-20)</span><span id="stat-q-conv">—</span></div>
+                    <div class="stat-row"><span>標準差（後100回合）</span><span id="stat-q-std">—</span></div>
+                    <div class="stat-row"><span>最終路徑長度</span><span id="stat-q-path">—</span></div>
+                    <div class="stat-row"><span>掉落懸崖次數</span><span id="stat-q-cliff">—</span></div>
+                </div>
+                <div class="stat-card glass-card stat-s">
+                    <h4>SARSA</h4>
+                    <div class="stat-row"><span>最終平均獎勵</span><span id="stat-s-avg">—</span></div>
+                    <div class="stat-row"><span>最佳回合獎勵</span><span id="stat-s-best">—</span></div>
+                    <div class="stat-row"><span>收斂回合 (≥-20)</span><span id="stat-s-conv">—</span></div>
+                    <div class="stat-row"><span>標準差（後100回合）</span><span id="stat-s-std">—</span></div>
+                    <div class="stat-row"><span>最終路徑長度</span><span id="stat-s-path">—</span></div>
+                    <div class="stat-row"><span>掉落懸崖次數</span><span id="stat-s-cliff">—</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analysis Section -->
+        <section id="analysis-section" class="glass-card">
+            <h2 class="section-title"><span class="icon">🔬</span> 結果分析與討論</h2>
+            <div id="analysis-content" class="analysis-placeholder">
+                <p>請先完成訓練以生成分析報告 📊</p>
+            </div>
+        </section>
+
+        <!-- Theory Section -->
+        <section id="theory-section" class="glass-card">
+            <h2 class="section-title"><span class="icon">📖</span> 理論比較</h2>
+            <div class="theory-grid">
+                <div class="theory-card">
+                    <div class="theory-header theory-q">
+                        <h4>Q-learning（Off-policy）</h4>
+                    </div>
+                    <div class="theory-body">
+                        <p class="formula">Q(s,a) ← Q(s,a) + α[r + γ·<strong>max<sub>a'</sub></strong> Q(s',a') − Q(s,a)]</p>
+                        <ul>
+                            <li>更新基於「下一狀態的<strong>最佳可能行動</strong>」</li>
+                            <li>即使該最佳行動未實際執行，也用其估計值更新</li>
+                            <li>傾向學習<strong>理論最優策略</strong>（沿懸崖邊行走）</li>
+                            <li>在探索過程中可能因冒險而掉落懸崖</li>
+                            <li>訓練過程中獎勵波動較大</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="theory-card">
+                    <div class="theory-header theory-s">
+                        <h4>SARSA（On-policy）</h4>
+                    </div>
+                    <div class="theory-body">
+                        <p class="formula">Q(s,a) ← Q(s,a) + α[r + γ·Q(s',<strong>a'</strong>) − Q(s,a)]</p>
+                        <ul>
+                            <li>更新基於「<strong>實際採取的行動</strong>」</li>
+                            <li>反映了 ε-greedy 探索策略的影響</li>
+                            <li>傾向學習<strong>較安全的策略</strong>（遠離懸崖邊緣）</li>
+                            <li>因為考慮到探索可能導致的風險</li>
+                            <li>訓練過程中獎勵較為穩定</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>深度強化學習 — HW2：Q-learning vs SARSA | Cliff Walking Environment</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
