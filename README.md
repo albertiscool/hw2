@@ -6,6 +6,8 @@
 
 👉 [**點此體驗互動式 Demo**](https://albertiscool.github.io/hw2/)
 
+![App Demo Screenshot](demo.png)
+
 ## 📋 作業概述
 
 本作業在經典的 **Cliff Walking（懸崖行走）** 環境中，實作並比較兩種 Temporal Difference 強化學習演算法：
