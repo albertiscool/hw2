@@ -6,7 +6,7 @@
 
 👉 [**點此體驗互動式 Demo**](https://albertiscool.github.io/hw2/)
 
-![App Demo Screenshot](demo.webp)
+![App Demo Screenshot](demo_final.webp)
 
 ## 📋 作業概述
 
